@@ -1,0 +1,8 @@
+package: api
+output: ./pkg/api/api.gen.go
+generate:
+  - types
+  - chi-server
+  - spec
+compatibility:
+  old-aliasing: true
