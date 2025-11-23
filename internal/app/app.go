@@ -2,6 +2,7 @@ package app
 
 import (
 	httpcontroller "avito-test-task/internal/controller/http"
+	"avito-test-task/internal/database"
 	"avito-test-task/internal/repository/postgres"
 	"avito-test-task/internal/service"
 	"context"
@@ -13,10 +14,6 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/jackc/pgx/v5/stdlib"
-	"github.com/pressly/goose/v3"
 )
 
 type App struct{}
@@ -26,7 +23,7 @@ const migrationsDir = "./migrations"
 func (app App) MustRun() {
 	dbDSN := os.Getenv("DATABASE_URL")
 	if dbDSN == "" {
-		dbDSN = "postgres://user:password@localhost:5432/pr_reviewer?sslmode=disable"
+		log.Fatal("DATABASE_URL env variable not set")
 	}
 
 	port := os.Getenv("PORT")
@@ -37,33 +34,13 @@ func (app App) MustRun() {
 	ctx := context.Background()
 
 	// Database
+	pool, err := database.NewPool(ctx, database.Config{
+		DSN:            dbDSN,
+		MigrationsPath: migrationsDir,
+	})
 
-	log.Println("Connecting to database...")
-	poolConfig, err := pgxpool.ParseConfig(dbDSN)
 	if err != nil {
-		log.Fatalf("Unable to parse config: %v", err)
-	}
-
-	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
-	if err != nil {
-		log.Fatalf("Failed to connect to DB: %v", err)
-	}
-
-	if err := pool.Ping(ctx); err != nil {
-		log.Fatalf("Ping failed: %v", err)
-	}
-
-	log.Printf("Running migrations from %s\n", migrationsDir)
-
-	stdDB := stdlib.OpenDB(*poolConfig.ConnConfig)
-	if err := goose.SetDialect("postgres"); err != nil {
-		log.Fatal(err)
-	}
-	if err := goose.Up(stdDB, migrationsDir); err != nil {
-		log.Fatalf("Migration failed: %v", err)
-	}
-	if err := stdDB.Close(); err != nil {
-		log.Fatalf("Error closing DB: %v", err)
+		log.Fatalf("failed to connect to database: %v", err)
 	}
 
 	// Repositories
