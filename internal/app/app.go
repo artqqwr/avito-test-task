@@ -1,6 +1,7 @@
 package app
 
 import (
+	"avito-test-task/internal/config"
 	httpcontroller "avito-test-task/internal/controller/http"
 	"avito-test-task/internal/database"
 	"avito-test-task/internal/repository/postgres"
@@ -18,26 +19,16 @@ import (
 
 type App struct{}
 
-const migrationsDir = "./migrations"
-
 func (app App) MustRun() {
-	dbDSN := os.Getenv("DATABASE_URL")
-	if dbDSN == "" {
-		log.Fatal("DATABASE_URL env variable not set")
-	}
-
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	ctx := context.Background()
 
 	// Database
-	pool, err := database.NewPool(ctx, database.Config{
-		DSN:            dbDSN,
-		MigrationsPath: migrationsDir,
-	})
+	pool, err := database.NewPool(ctx, cfg.Database)
 
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
@@ -53,8 +44,7 @@ func (app App) MustRun() {
 	ctrl := httpcontroller.NewController(svc)
 
 	// Server
-	addr := fmt.Sprintf("0.0.0.0:%s", port)
-
+	addr := fmt.Sprintf("0.0.0.0:%s", cfg.Server.Port)
 	server := &http.Server{
 		Addr:         addr,
 		Handler:      ctrl.Handler,
