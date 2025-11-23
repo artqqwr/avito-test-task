@@ -24,10 +24,9 @@ compose-up:
 compose-down:
 	docker compose down
 
-# idk how to make this correctly
 compose-clean:
 	@echo "Cleaning all docker-compose images and containers"
-	docker compose down --rmi all
+	docker compose down -v
 
 clean: compose-clean
 	@echo "Cleaning $(BIN_PATH)"
