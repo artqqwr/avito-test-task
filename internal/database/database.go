@@ -12,42 +12,42 @@ import (
 )
 
 type Config struct {
-	DSN            string
-	MigrationsPath string
+	DSN string
 }
+
+const postgresDialect = "postgres"
+const migrationsPath = "./migrations"
 
 func NewPool(ctx context.Context, cfg Config) (*pgxpool.Pool, error) {
 	log.Println("Connecting to database...")
 	poolConfig, err := pgxpool.ParseConfig(cfg.DSN)
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse config: %v", err)
+		return nil, err
 	}
 
 	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to DB: %v", err)
+		return nil, err
 	}
 
 	if err := pool.Ping(ctx); err != nil {
 		return nil, fmt.Errorf("ping failed: %v", err)
 	}
 
-	log.Printf("Running migrations from %s\n", cfg.MigrationsPath)
-
 	stdDB := stdlib.OpenDB(*poolConfig.ConnConfig)
 	defer stdDB.Close()
 
-	if err := migrate(stdDB, cfg.MigrationsPath); err != nil {
+	if err := migrate(stdDB, postgresDialect, migrationsPath); err != nil {
 		return nil, fmt.Errorf("failed to run migrations: %v", err)
 	}
 
 	return pool, nil
 }
 
-const dialect = "postgres"
+func migrate(db *sql.DB, dialect string, migrationsPath string) error {
+	log.Printf("Running migrations from %s\n", migrationsPath)
 
-func migrate(db *sql.DB, migrationsPath string) error {
 	if err := goose.SetDialect(dialect); err != nil {
 		return err
 	}
